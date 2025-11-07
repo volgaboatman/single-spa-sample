@@ -1,5 +1,27 @@
 import { registerApplication, start, getAppNames, getAppStatus, getMountedApps } from 'single-spa';
 
+// Extend Window interface for global single-spa utilities
+declare global {
+  interface Window {
+    singleSpa: {
+      registerApplication: typeof registerApplication;
+      start: typeof start;
+      getAppNames: typeof getAppNames;
+      getAppStatus?: typeof getAppStatus;
+      getMountedApps?: typeof getMountedApps;
+    };
+    debugSingleSpa: {
+      logAppState: () => void;
+      getRegisteredApps: () => string[];
+      getAppStatus: (appName: string) => string | null;
+      getAllAppStatuses: () => Record<string, string>;
+    };
+    System: {
+      import: (module: string) => Promise<any>;
+    };
+  }
+}
+
 // Make single-spa available globally for dynamic registration and debugging
 window.singleSpa = { 
   registerApplication, 
@@ -51,12 +73,13 @@ function setupSingleSpaEventHandlers() {
   ];
 
   eventTypes.forEach(eventType => {
-    window.addEventListener(eventType, (event) => {
+    window.addEventListener(eventType, (event: Event) => {
+      const customEvent = event as CustomEvent;
       const timestamp = new Date().toISOString();
       const eventData = {
         type: eventType,
         timestamp,
-        detail: event.detail || {},
+        detail: customEvent.detail || {},
         target: event.target,
       };
 
@@ -72,35 +95,35 @@ function setupSingleSpaEventHandlers() {
       console[logMethod]('Event Details:', eventData);
       
       // Log app-specific information if available
-      if (event.detail && event.detail.appName) {
-        console[logMethod](`App Name: ${event.detail.appName}`);
+      if (customEvent.detail && (customEvent.detail as any).appName) {
+        console[logMethod](`App Name: ${(customEvent.detail as any).appName}`);
       }
       
-      if (event.detail && event.detail.activeApps) {
-        console[logMethod](`Active Apps:`, event.detail.activeApps);
+      if (customEvent.detail && (customEvent.detail as any).activeApps) {
+        console[logMethod](`Active Apps:`, (customEvent.detail as any).activeApps);
       }
       
-      if (event.detail && event.detail.mountingApps) {
-        console[logMethod](`Mounting Apps:`, event.detail.mountingApps);
+      if (customEvent.detail && (customEvent.detail as any).mountingApps) {
+        console[logMethod](`Mounting Apps:`, (customEvent.detail as any).mountingApps);
       }
       
-      if (event.detail && event.detail.unmountingApps) {
-        console[logMethod](`Unmounting Apps:`, event.detail.unmountingApps);
+      if (customEvent.detail && (customEvent.detail as any).unmountingApps) {
+        console[logMethod](`Unmounting Apps:`, (customEvent.detail as any).unmountingApps);
       }
       
-      if (event.detail && event.detail.originalEvent) {
-        console[logMethod](`Original Event:`, event.detail.originalEvent);
+      if (customEvent.detail && (customEvent.detail as any).originalEvent) {
+        console[logMethod](`Original Event:`, (customEvent.detail as any).originalEvent);
       }
       
-      if (event.detail && event.detail.error) {
-        console.error(`Error:`, event.detail.error);
-        console.error(`Error Stack:`, event.detail.error?.stack);
+      if (customEvent.detail && (customEvent.detail as any).error) {
+        console.error(`Error:`, (customEvent.detail as any).error);
+        console.error(`Error Stack:`, (customEvent.detail as any).error?.stack);
       }
       
-      if (event.detail && event.detail.domElement) {
-        console[logMethod](`DOM Element:`, event.detail.domElement);
-        console[logMethod](`DOM Element ID:`, event.detail.domElement?.id);
-        console[logMethod](`DOM Element in body:`, document.body.contains(event.detail.domElement));
+      if (customEvent.detail && (customEvent.detail as any).domElement) {
+        console[logMethod](`DOM Element:`, (customEvent.detail as any).domElement);
+        console[logMethod](`DOM Element ID:`, (customEvent.detail as any).domElement?.id);
+        console[logMethod](`DOM Element in body:`, document.body.contains((customEvent.detail as any).domElement));
       }
       
       // Log all registered apps on routing events
@@ -119,7 +142,7 @@ function setupSingleSpaEventHandlers() {
 
   // Add a catch-all handler for any single-spa events we might have missed
   // This uses event capturing to catch all single-spa events
-  window.addEventListener('single-spa:before-routing-event', (event) => {
+  window.addEventListener('single-spa:before-routing-event', () => {
     // This will be handled by the specific handler above
   }, true);
   
@@ -129,11 +152,11 @@ function setupSingleSpaEventHandlers() {
       const registeredApps = window.singleSpa?.getAppNames?.() || [];
       const mountedApps = window.singleSpa?.getMountedApps?.() || [];
       
-      const appStatuses = {};
+      const appStatuses: Record<string, string> = {};
       registeredApps.forEach(appName => {
         try {
           if (window.singleSpa?.getAppStatus) {
-            appStatuses[appName] = window.singleSpa.getAppStatus(appName);
+            appStatuses[appName] = window.singleSpa.getAppStatus(appName) || 'UNKNOWN';
           } else {
             appStatuses[appName] = mountedApps.includes(appName) ? 'MOUNTED' : 'UNKNOWN';
           }
@@ -157,9 +180,9 @@ function setupSingleSpaEventHandlers() {
   window.debugSingleSpa = {
     logAppState,
     getRegisteredApps: () => window.singleSpa?.getAppNames?.() || [],
-    getAppStatus: (appName) => {
+    getAppStatus: (appName: string) => {
       try {
-        return window.singleSpa?.getAppStatus?.(appName);
+        return window.singleSpa?.getAppStatus?.(appName) || null;
       } catch (e) {
         console.warn(`Could not get status for ${appName}:`, e);
         return null;
@@ -167,10 +190,10 @@ function setupSingleSpaEventHandlers() {
     },
     getAllAppStatuses: () => {
       const apps = window.singleSpa?.getAppNames?.() || [];
-      const statuses = {};
+      const statuses: Record<string, string> = {};
       apps.forEach(appName => {
         try {
-          statuses[appName] = window.singleSpa?.getAppStatus?.(appName);
+          statuses[appName] = window.singleSpa?.getAppStatus?.(appName) || 'UNKNOWN';
         } catch (e) {
           statuses[appName] = 'ERROR';
         }
@@ -201,7 +224,7 @@ setupSingleSpaEventHandlers();
 
 registerApplication({
   name: 'main',
-  app: () => System.import('main'),
+  app: () => window.System.import('main'),
   activeWhen: ['/'],
 });
 

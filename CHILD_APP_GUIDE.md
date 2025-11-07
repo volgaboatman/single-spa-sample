@@ -26,6 +26,7 @@ A child application in this single-spa setup is a standalone React application t
 - Node.js and npm installed
 - Basic knowledge of React
 - Understanding of single-spa concepts
+- (Optional) TypeScript knowledge if using TypeScript
 
 ## Project Structure
 
@@ -72,11 +73,17 @@ npm install --save-dev \
   @babel/core \
   @babel/preset-env \
   @babel/preset-react \
+  @babel/preset-typescript \
   babel-loader \
   css-loader \
   style-loader \
-  html-webpack-plugin
+  html-webpack-plugin \
+  typescript \
+  @types/react \
+  @types/react-dom
 ```
+
+**Note**: TypeScript dependencies are optional. Omit them if using JavaScript only.
 
 ### 3. Create package.json Scripts
 
@@ -110,12 +117,16 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.jsx?$/,
+        test: /\.(js|jsx|ts|tsx)$/,  // Supports both JavaScript and TypeScript
         exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-env', '@babel/preset-react'],
+            presets: [
+              '@babel/preset-env',
+              '@babel/preset-react',
+              '@babel/preset-typescript',  // Add for TypeScript support
+            ],
           },
         },
       },

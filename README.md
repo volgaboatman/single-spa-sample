@@ -85,3 +85,12 @@ See **[CHILD_APP_GUIDE.md](./CHILD_APP_GUIDE.md)** for a complete guide on creat
 
 Quick start: Use the `child-app-template/` directory as a starting point for new child apps.
 
+## TypeScript Support
+
+✅ **TypeScript is fully supported!** Both main and child applications can use TypeScript.
+
+- See **[TYPESCRIPT_GUIDE.md](./TYPESCRIPT_GUIDE.md)** for complete TypeScript setup instructions
+- Webpack configs are already configured to handle `.ts` and `.tsx` files
+- Type definitions for React and single-spa are included
+- You can mix JavaScript and TypeScript during migration
+

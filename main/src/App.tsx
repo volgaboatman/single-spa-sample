@@ -1,13 +1,49 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
+// Extend Window interface for SystemJS
+declare global {
+  interface Window {
+    System: {
+      import: (module: string) => Promise<any>;
+    };
+    singleSpa: any;
+  }
+}
+
+interface Application {
+  name: string;
+  url: string;
+}
+
+interface FormData {
+  name: string;
+  url: string;
+}
+
+interface ChildAppRendererProps {
+  appUrl: string;
+  appName: string;
+  index: number;
+}
+
+interface AppInstance {
+  module: {
+    bootstrap: (props?: any) => Promise<void>;
+    mount: (props: any) => Promise<void>;
+    unmount: (props: any) => Promise<void>;
+  };
+  containerId: string;
+  containerElement: HTMLElement;
+}
+
 function App() {
-  const [applications, setApplications] = useState([]);
-  const [formData, setFormData] = useState({
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     url: '',
   });
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   // Load applications from localStorage on mount
   useEffect(() => {
@@ -24,7 +60,7 @@ function App() {
     registerChildApplications(applications);
   }, [applications]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -32,7 +68,7 @@ function App() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.url.trim()) {
       alert('Please fill in both application name and URL');
@@ -53,12 +89,12 @@ function App() {
     setFormData({ name: '', url: '' });
   };
 
-  const handleEdit = (index) => {
+  const handleEdit = (index: number) => {
     setFormData(applications[index]);
     setEditingIndex(index);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = (index: number) => {
     const updated = applications.filter((_, i) => i !== index);
     setApplications(updated);
     if (editingIndex === index) {
@@ -72,7 +108,7 @@ function App() {
     setFormData({ name: '', url: '' });
   };
 
-  const registerChildApplications = (apps) => {
+  const registerChildApplications = (apps: Application[]) => {
     // Note: We're not registering with single-spa routing since we're manually mounting
     // The apps are loaded and mounted directly in ChildAppRenderer component
     console.log(`[Main App] Managing ${apps.length} child applications (manual mounting)`);
@@ -85,17 +121,17 @@ function App() {
   };
 
   // Component to render child applications dynamically
-  const ChildAppRenderer = ({ appUrl, appName, index }) => {
+  const ChildAppRenderer: React.FC<ChildAppRendererProps> = ({ appUrl, appName, index }) => {
     console.log(`[ChildAppRenderer] Component rendering for ${appName} (index: ${index}, url: ${appUrl})`);
     
-    const containerRef = useRef(null);
-    const [error, setError] = useState(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const appInstanceRef = useRef(null);
+    const appInstanceRef = useRef<AppInstance | null>(null);
     const [containerReady, setContainerReady] = useState(false);
 
     // Use callback ref to know when the container is actually in the DOM
-    const setContainerRef = (element) => {
+    const setContainerRef = (element: HTMLDivElement | null) => {
       containerRef.current = element;
       if (element) {
         console.log(`[ChildAppRenderer] Container ref set for ${appName}:`, element);
@@ -134,7 +170,7 @@ function App() {
           const containerId = `child-app-root-${index}-${Date.now()}`;
           
           // Find or create the inner container for the child app
-          let containerElement = wrapperElement.querySelector(`#${containerId}`);
+          let containerElement = wrapperElement.querySelector(`#${containerId}`) as HTMLElement;
           if (!containerElement) {
             containerElement = document.createElement('div');
             containerElement.id = containerId;
@@ -182,18 +218,18 @@ function App() {
             try {
               console.log('Pre-loading dependencies...');
               await Promise.all([
-                System.import('react').catch(err => {
+                System.import('react').catch((err: Error) => {
                   console.error('Failed to load react:', err);
                   throw new Error('React is not available in SystemJS import map');
                 }),
-                System.import('react-dom').catch(err => {
+                System.import('react-dom').catch((err: Error) => {
                   console.error('Failed to load react-dom:', err);
                   throw new Error('ReactDOM is not available in SystemJS import map');
                 }),
-                System.import('single-spa-react').catch(err => {
+                System.import('single-spa-react').catch((err: Error) => {
                   console.warn('Failed to load single-spa-react (might be bundled):', err);
                 }),
-                System.import('single-spa').catch(err => {
+                System.import('single-spa').catch((err: Error) => {
                   console.error('Failed to load single-spa:', err);
                   throw new Error('single-spa is not available in SystemJS import map');
                 }),
@@ -201,16 +237,28 @@ function App() {
               console.log('Dependencies pre-loaded successfully');
             } catch (checkError) {
               console.error('Error pre-loading dependencies:', checkError);
-              throw new Error(`Required dependencies not available: ${checkError.message}`);
+              throw new Error(`Required dependencies not available: ${(checkError as Error).message}`);
             }
             
-            const appModule = await System.import(appUrl);
+            const appModule = await System.import(appUrl) as {
+              bootstrap?: (props?: any) => Promise<void>;
+              mount?: (props: any) => Promise<void>;
+              unmount?: (props: any) => Promise<void>;
+            };
             console.log('App module loaded:', appModule);
             console.log('App module keys:', Object.keys(appModule || {}));
             
             if (appModule && appModule.bootstrap && appModule.mount && appModule.unmount) {
               // Store the app module for cleanup
-              appInstanceRef.current = { module: appModule, containerId, containerElement: containerElement };
+              appInstanceRef.current = { 
+                module: {
+                  bootstrap: appModule.bootstrap,
+                  mount: appModule.mount,
+                  unmount: appModule.unmount,
+                }, 
+                containerId, 
+                containerElement 
+              };
               
               // Bootstrap the app
               console.log('Bootstrapping app...');
@@ -219,7 +267,7 @@ function App() {
                 console.log('App bootstrapped successfully');
               } catch (bootstrapError) {
                 console.error('Bootstrap error:', bootstrapError);
-                throw new Error(`Bootstrap failed: ${bootstrapError.message}`);
+                throw new Error(`Bootstrap failed: ${(bootstrapError as Error).message}`);
               }
               
               // Mount the app to the container
@@ -231,7 +279,7 @@ function App() {
               const mountProps = {
                 name: `child-${appName}-${index}`,
                 domElement: containerElement,
-                singleSpa: window.singleSpa,
+                singleSpa: (window as any).singleSpa,
               };
               
               try {
@@ -246,7 +294,7 @@ function App() {
                 if (!containerElement.innerHTML || containerElement.innerHTML.trim() === '') {
                   console.warn('Container is empty after mount - React may not have rendered');
                   // Check if there are any React errors
-                  const reactErrors = window.console._errors || [];
+                  const reactErrors = (window as any).console._errors || [];
                   if (reactErrors.length > 0) {
                     console.error('React errors detected:', reactErrors);
                   }
@@ -255,8 +303,8 @@ function App() {
                 console.log('App mounted successfully');
               } catch (mountError) {
                 console.error('Mount error:', mountError);
-                console.error('Mount error stack:', mountError.stack);
-                throw new Error(`Mount failed: ${mountError.message}`);
+                console.error('Mount error stack:', (mountError as Error).stack);
+                throw new Error(`Mount failed: ${(mountError as Error).message}`);
               }
               
               setLoading(false);
@@ -269,12 +317,12 @@ function App() {
             }
           } catch (importError) {
             console.error('Error loading child app:', importError);
-            console.error('Error stack:', importError.stack);
-            setError(`Failed to load application: ${importError.message}`);
+            console.error('Error stack:', (importError as Error).stack);
+            setError(`Failed to load application: ${(importError as Error).message}`);
             setLoading(false);
           }
         } catch (err) {
-          setError(err.message);
+          setError((err as Error).message);
           setLoading(false);
         }
       };
@@ -291,8 +339,8 @@ function App() {
             module.unmount({
               name: `child-${appName}-${index}`,
               domElement: containerElement,
-              singleSpa: window.singleSpa,
-            }).catch((err) => {
+              singleSpa: (window as any).singleSpa,
+            }).catch((err: Error) => {
               console.error('Error unmounting app:', err);
             }).finally(() => {
               // Clean up the inner container after unmount

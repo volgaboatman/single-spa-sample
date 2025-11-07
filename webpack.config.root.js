@@ -4,7 +4,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   mode: 'development',
-  entry: './root-config.js',
+  entry: './root-config.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'root-config.js',
@@ -13,12 +13,15 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.js$/,
+        test: /\.(js|ts)$/,
         exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-env'],
+            presets: [
+              '@babel/preset-env',
+              '@babel/preset-typescript', // Added for TypeScript support
+            ],
           },
         },
       },
