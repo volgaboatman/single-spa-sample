@@ -1,0 +1,62 @@
+.child-app {
+  padding: 20px;
+  min-height: 100%;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.host-info {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 600px;
+  width: 100%;
+}
+
+.host-info h2 {
+  margin: 0 0 25px 0;
+  color: #333;
+  text-align: center;
+  font-size: 2em;
+  border-bottom: 3px solid #f5576c;
+  padding-bottom: 15px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #f5576c;
+}
+
+.info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  color: #333;
+  font-size: 18px;
+  word-break: break-all;
+  font-family: 'Courier New', monospace;
+}
+
