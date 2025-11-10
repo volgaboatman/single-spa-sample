@@ -1,0 +1,14 @@
+{
+    "name": "pure-js-app",
+    "version": "1.0.0",
+    "description": "Pure JavaScript child application without webpack or any bundler",
+    "private": true,
+    "keywords": [
+        "single-spa",
+        "microfrontend",
+        "pure-javascript",
+        "no-webpack"
+    ],
+    "author": "",
+    "license": "ISC"
+}
